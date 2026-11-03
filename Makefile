@@ -39,8 +39,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:= Red_Reader
 APP_TITLE	:= Red Reader
-APP_AUTHOR	:= Sick Duck
-APP_VERSION	:= 1.0.0
+APP_AUTHOR	:= SickDuck
+APP_VERSION	:= 2.3.0
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
@@ -56,12 +56,14 @@ CFLAGS	:=	-Wall -Os -ffunction-sections -fdata-sections -flto $(ARCH) $(DEFINES)
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
+CXXFLAGS	:= $(CFLAGS) -std=gnu++17 -fno-rtti -fno-exceptions
 
 ASFLAGS	:=	$(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs $(ARCH) -flto -Wl,--gc-sections -Wl,-s -Wl,-Map,$(notdir $*.map)                                                                                                                
 
-LIBS := -lmupdf -lmupdf-third -lSDL2_image -lwebp -ljpeg -lpng -lfreetype -lharfbuzz -lbz2 -lz -lSDL2 -lEGL -lglapi -ldrm_nouveau -lnx
+# SDL_ttf must never resolve hb_* against MuPDF's context-bound HarfBuzz copy.
+# Resolve both libraries' HarfBuzz references with portlibs before mupdf-third.
+LIBS := -lmupdf -lSDL2_ttf -lharfbuzz -lmupdf-third -lcurl -larchive -llzma -llz4 -lzstd -lexpat -lSDL2_image -lwebp -ljpeg -lpng -lfreetype -lharfbuzz -lbz2 -lz -lSDL2 -lEGL -lglapi -ldrm_nouveau -lnx -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
