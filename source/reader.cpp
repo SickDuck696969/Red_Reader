@@ -25,7 +25,7 @@ void openBook(int index) {
     app.page = app.books[index].page;
     app.zoom = 1;
     app.panX = app.panY = 0;
-    app.hud = true;
+    app.hud = false;
     if (app.pageTexture) {
         SDL_DestroyTexture(app.pageTexture);
         app.pageTexture = nullptr;

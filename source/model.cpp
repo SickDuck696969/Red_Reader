@@ -3,6 +3,12 @@
 #include <cmath>
 #include <numeric>
 namespace rr {
+Point anchoredPan(Point startMid, Point currentMid, Point startPan, float startZoom, float zoom, float width,
+                  float height) {
+    float ratio = zoom / std::max(.01f, startZoom);
+    return {currentMid.x - width / 2 - (startMid.x - width / 2 - startPan.x) * ratio,
+            currentMid.y - height / 2 - (startMid.y - height / 2 - startPan.y) * ratio};
+}
 bool validDownloadUrl(const std::string &url) {
     auto prefix = url.rfind("https://", 0) == 0 ? 8u : url.rfind("http://", 0) == 0 ? 7u : 0u;
     if (!prefix || url.size() > 2048)
@@ -44,17 +50,24 @@ std::string readingCss(const Style &s, const std::string &fontRoot) {
     std::string css = "body { margin: " + std::to_string(s.margin) +
                       "px !important; } body, p, li { line-height: " + std::to_string(s.spacing / 10.f) +
                       " !important; }";
+    if (s.alignment > 0 && s.alignment < alignmentCount) {
+        const char *align[] = {"", "left", "center", "right", "justify"};
+        css += "body, p, li, blockquote { text-align: " + std::string(align[s.alignment]) + " !important; }";
+        if (s.alignment == 2 || s.alignment == 3)
+            css += "p { text-indent: 0 !important; }";
+    }
     if (!s.font)
         return css;
-    const char *families[] = {"", "Atkinson", "CrimsonText", "Lusitana"};
     for (int bold = 0; bold < 2; ++bold)
         for (int italic = 0; italic < 2; ++italic) {
             std::string face = bold ? "Bold" : "Regular";
             if (italic && s.font != 3)
                 face = bold ? "BoldItalic" : "Italic";
+            if (s.font == 5 && bold && italic)
+                face = "Bold";
             css += "@font-face { font-family: Reader; font-weight: " + std::string(bold ? "bold" : "normal") +
                    "; font-style: " + (italic ? "italic" : "normal") + "; src: url('" + fontRoot +
-                   families[s.font] + "-" + face + ".ttf'); }";
+                   fontFamilies[s.font] + "-" + face + ".ttf'); }";
         }
     css += "body, p, div, span, li, h1, h2, h3, h4, blockquote { font-family: Reader !important; }";
     return css;
@@ -75,14 +88,16 @@ std::string format(const std::string &p) {
 }
 bool supported(const std::string &p) {
     auto f = format(p);
-    return f == "epub" || f == "pdf" || f == "cbz" || f == "cbr";
+    return f == "epub" || f == "pdf" || f == "cbz" || f == "cbr" || f == "fb2" || f == "html" || f == "htm" ||
+           f == "xhtml" || f == "xps" || f == "oxps";
 }
 bool fixedLayout(const std::string &p) {
-    return format(p) != "epub";
+    auto f = format(p);
+    return f != "epub" && f != "fb2" && f != "html" && f != "htm" && f != "xhtml";
 }
 std::string styleKey(const Style &s) {
     return std::to_string(s.font) + ":" + std::to_string(s.size) + ":" + std::to_string(s.spacing) + ":" +
-           std::to_string(s.margin) + ":" + std::to_string(s.portrait);
+           std::to_string(s.margin) + ":" + std::to_string(s.portrait) + ":" + std::to_string(s.alignment);
 }
 int resolvePage(int page, int savedTotal, double fraction, int total) {
     if (total <= 0)

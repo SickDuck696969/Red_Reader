@@ -319,6 +319,36 @@ bool validBookFile(const std::string &path, const std::string &kind, std::string
         valid = !archiveImage(path, "META-INF/container.xml").data.empty();
     if ((kind == "cbz" && zip) || (kind == "cbr" && rar))
         valid = !comicPages(path, error).empty();
+    if ((kind == "xps" || kind == "oxps") && zip) {
+        auto types = archiveImage(path, "[Content_Types].xml");
+        auto typeText = lower(std::string(types.data.begin(), types.data.end()));
+        valid = typeText.find("fixeddocumentsequence") != std::string::npos &&
+                !archiveImage(path, "_rels/.rels").data.empty();
+    }
+    if (kind == "fb2" || kind == "html" || kind == "htm" || kind == "xhtml") {
+        file = fopen(path.c_str(), "rb");
+        if (file) {
+            char prefix[65536];
+            size = fread(prefix, 1, sizeof(prefix), file);
+            fclose(file);
+            if (kind == "fb2") {
+                Xml x;
+                x.parser = XML_ParserCreate(nullptr);
+                if (x.parser) {
+                    XML_SetUserData(x.parser, &x);
+                    XML_SetStartElementHandler(x.parser, begin);
+                    XML_SetEntityDeclHandler(x.parser, entity);
+                    XML_Parse(x.parser, prefix, size, XML_FALSE);
+                    valid = !x.nodes.empty() && x.nodes.front().tag == "FictionBook";
+                    XML_ParserFree(x.parser);
+                }
+            } else {
+                auto html = lower(std::string(prefix, size));
+                valid = html.find("<html") != std::string::npos ||
+                        html.find("<!doctype html") != std::string::npos;
+            }
+        }
+    }
     if (!valid && error.empty())
         error = "The link did not return a matching book file. Use a direct download URL.";
     return valid;

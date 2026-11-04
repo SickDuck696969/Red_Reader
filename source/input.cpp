@@ -85,7 +85,7 @@ void input(u64 down, u64 held) {
     int delta = (down & (HidNpadButton_Down | HidNpadButton_StickLDown) ? 1 : 0) -
                 (down & (HidNpadButton_Up | HidNpadButton_StickLUp) ? 1 : 0);
     if (app.screen == Screen::Settings) {
-        move(delta, 12);
+        move(delta, settingsCount);
         if (down & (HidNpadButton_B | HidNpadButton_Plus)) {
             applySettings();
             return;
@@ -93,13 +93,13 @@ void input(u64 down, u64 held) {
         if (down & (HidNpadButton_A | HidNpadButton_Left | HidNpadButton_Right)) {
             int sign = down & HidNpadButton_Left ? -1 : 1;
             bool fixed = app.active >= 0 && fixedLayout(app.books[app.active].path);
-            if (app.cursor < 4 && fixed) {
-                notify("Text formatting is available for EPUB books");
+            if (app.cursor < 5 && fixed) {
+                notify("Text formatting is available for EPUB, FB2 and HTML books");
                 return;
             }
             switch (app.cursor) {
             case 0:
-                app.style.font = (app.style.font + sign + 4) % 4;
+                app.style.font = (app.style.font + sign + fontCount) % fontCount;
                 break;
             case 1:
                 app.style.size = std::clamp(app.style.size + sign * 2, 12, 42);
@@ -108,46 +108,49 @@ void input(u64 down, u64 held) {
                 app.style.spacing = std::clamp(app.style.spacing + sign, 10, 22);
                 break;
             case 3:
-                app.style.margin = std::clamp(app.style.margin + sign * 8, 8, 88);
+                app.style.margin = std::clamp(app.style.margin + sign * 8, 0, 88);
                 break;
             case 4:
-                app.style.theme = (app.style.theme + sign + 3) % 3;
+                app.style.alignment = (app.style.alignment + sign + alignmentCount) % alignmentCount;
                 break;
             case 5:
-                app.style.portrait = !app.style.portrait;
+                app.style.theme = (app.style.theme + sign + 3) % 3;
                 break;
             case 6:
-                app.style.motion = !app.style.motion;
+                app.style.portrait = !app.style.portrait;
                 break;
             case 7:
+                app.style.motion = !app.style.motion;
+                break;
+            case 8:
                 if (app.active >= 0) {
                     applySettings();
                     app.pendingNavigation = 1;
                     completeNavigation();
                 }
                 break;
-            case 8:
+            case 9:
                 if (app.active >= 0) {
                     applySettings();
                     app.pendingNavigation = 2;
                     completeNavigation();
                 }
                 break;
-            case 9:
+            case 10:
                 if (app.active >= 0) {
                     applySettings();
                     app.pendingNavigation = 3;
                     completeNavigation();
                 }
                 break;
-            case 10:
+            case 11:
                 if (app.active >= 0)
                     closeBook();
                 else
                     go(Screen::Library);
                 saveState();
                 break;
-            case 11:
+            case 12:
                 saveReading();
                 saveState();
                 app.running = false;
@@ -282,6 +285,7 @@ void touch(const SDL_Event &event) {
     static std::map<SDL_FingerID, SDL_FPoint> fingers;
     static bool pinching = false;
     static float pinchDistance = 1, pinchZoom = 1;
+    static Point pinchMid, pinchPan;
     static bool tracking = false;
     static SDL_FingerID finger = 0;
     static float startX = 0, startY = 0, lastX = 0, lastY = 0;
@@ -299,16 +303,26 @@ void touch(const SDL_Event &event) {
     else
         fingers[event.tfinger.fingerId] = {x, y};
     if (fingers.size() >= 2 && app.screen == Screen::Reading && app.active >= 0 &&
-        fixedLayout(app.books[app.active].path)) {
+        format(app.books[app.active].path) != "epub") {
         auto first = fingers.begin(), second = std::next(first);
         float dx = first->second.x - second->second.x, dy = first->second.y - second->second.y;
         float distance = std::max(1.f, std::sqrt(dx * dx + dy * dy));
+        Point midpoint{(first->second.x + second->second.x) / 2, (first->second.y + second->second.y) / 2};
         if (!pinching) {
+            pinchMid = midpoint;
+            pinchPan = {app.panX, app.panY};
             pinchDistance = distance;
             pinchZoom = app.zoom;
             pinching = true;
         }
         app.zoom = std::clamp(pinchZoom * distance / pinchDistance, 1.f, 3.f);
+        float width = app.style.portrait ? 720.f : 1280.f, height = app.style.portrait ? 1280.f : 720.f;
+        auto pan = anchoredPan(pinchMid, midpoint, pinchPan, pinchZoom, app.zoom, width, height);
+        float fit = std::min(width / std::max(1, app.pageWidth), height / std::max(1, app.pageHeight));
+        float maxX = std::max(0.f, (app.pageWidth * fit * app.zoom - width) / 2);
+        float maxY = std::max(0.f, (app.pageHeight * fit * app.zoom - height) / 2);
+        app.panX = std::clamp(pan.x, -maxX, maxX);
+        app.panY = std::clamp(pan.y, -maxY, maxY);
         tracking = false;
         return;
     }
@@ -370,6 +384,11 @@ void touch(const SDL_Event &event) {
         if (std::abs(dx) < 24 && std::abs(dy) < 24 && x >= 820 && x < 1040 && y >= 20 && y < 70) {
             app.libraryCursor = app.cursor;
             openDownloads();
+            return;
+        }
+        if (std::abs(dx) < 24 && std::abs(dy) < 24 && x >= 856 && x < 1240 && y >= 120 && y < 640 &&
+            !app.visible.empty()) {
+            openBook(app.visible[app.cursor]);
             return;
         }
         if (std::abs(dx) > 60 || std::abs(dy) > 60) {

@@ -13,6 +13,14 @@ using namespace rr;
         }                                                                                                    \
     } while (0)
 int main() {
+    for (auto path : {"a.fb2", "a.HTML", "a.htm", "a.xhtml", "a.xps", "a.oxps"})
+        CHECK(supported(path));
+    CHECK(!fixedLayout("a.fb2") && !fixedLayout("a.html") && fixedLayout("a.xps"));
+    auto pan = anchoredPan({800, 450}, {800, 450}, {0, 0}, 1, 2, 1280, 720);
+    CHECK(pan.x == -160 && pan.y == -90); // touched point stays in the same place
+    pan = anchoredPan({800, 450}, {830, 470}, {20, -10}, 2, 3, 1280, 720);
+    CHECK(pan.x == -20 && pan.y == -40); // combines zoom and two-finger pan
+
     CHECK(validDownloadUrl("https://example.org/book.epub?token=abc"));
     CHECK(validDownloadUrl("http://192.168.1.2:8000/book.pdf"));
     CHECK(!validDownloadUrl("file:///etc/passwd") && !validDownloadUrl("https:///book.epub"));
@@ -53,12 +61,31 @@ int main() {
     CHECK(styleKey(s) == key);
     s.font = 2;
     CHECK(styleKey(s) != key);
-    for (int i = 0; i < 4; ++i) {
+    s.font = 0;
+    s.margin = 0;
+    CHECK(readingCss(s).find("margin: 0px") != std::string::npos);
+    const char *alignments[] = {"", "left", "center", "right", "justify"};
+    for (int a = 1; a < alignmentCount; ++a) {
+        auto before = styleKey(s);
+        s.alignment = a;
+        CHECK(styleKey(s) != before);
+        CHECK(readingCss(s).find(std::string("text-align: ") + alignments[a] + " !important") !=
+              std::string::npos);
+    }
+    s.alignment = 0;
+    CHECK(readingCss(s).find("text-align") == std::string::npos);
+    for (int i = 0; i < fontCount; ++i) {
         s.font = i;
         auto css = readingCss(s, std::filesystem::absolute("romfs/fonts").generic_string() + "/");
         CHECK((css.find("@font-face") != std::string::npos) == (i != 0));
         if (i)
             CHECK(css.find("font-family: Reader !important") != std::string::npos);
+        size_t pos = 0;
+        while ((pos = css.find("url('", pos)) != std::string::npos) {
+            auto end = css.find("')", pos);
+            CHECK(std::filesystem::exists(css.substr(pos + 5, end - pos - 5)));
+            pos = end + 2;
+        }
         std::ofstream("build/reading-" + std::to_string(i) + ".css") << css;
     }
     std::cout << "PASS: supported formats, page restoration, filtering, sorting, reflow cache keys, bundled "

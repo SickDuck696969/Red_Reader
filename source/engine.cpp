@@ -204,8 +204,8 @@ void entry(void *) {
                 out.page = resolvePage(r.page, r.previousTotal, r.fraction, out.total);
                 if (!cache.count(out.page)) {
                     auto asset = archiveImage(r.path, comicEntries[out.page]);
-                    auto image = assetRaster(asset, r.style.portrait ? 656 : 1152,
-                                             r.style.portrait ? 1168 : 604, true);
+                    auto image = assetRaster(asset, r.style.portrait ? 720 : 1280,
+                                             r.style.portrait ? 1280 : 720, true);
                     if (image.pixels.empty())
                         out.error = asset.error.empty() ? "Could not decode comic page" : asset.error;
                     else
@@ -239,8 +239,8 @@ void entry(void *) {
                     document = fz_open_document(context, r.path.c_str());
                     if (fz_needs_password(context, document))
                         fz_throw(context, FZ_ERROR_GENERIC, "Password-protected books are not supported");
-                    fz_layout_document(context, document, r.style.portrait ? 656 : 800,
-                                       r.style.portrait ? 1168 : 604, r.style.size);
+                    fz_layout_document(context, document, r.style.portrait ? 720 : 1280,
+                                       r.style.portrait ? 1280 : 720, r.style.size);
                     total = fz_count_pages(context, document);
                     if (total <= 0)
                         fz_throw(context, FZ_ERROR_GENERIC, "This document has no pages");
@@ -253,12 +253,12 @@ void entry(void *) {
                 out.page = resolvePage(r.page, r.previousTotal, r.fraction, total);
                 out.chapters = chapters;
                 if (!cache.count(out.page))
-                    cache[out.page] = raster(document, out.page, r.style.portrait ? 656 : 1152,
-                                             r.style.portrait ? 1168 : 604, fixedLayout(r.path));
+                    cache[out.page] = raster(document, out.page, r.style.portrait ? 720 : 1280,
+                                             r.style.portrait ? 1280 : 720, fixedLayout(r.path));
                 if (cache[out.page].pixels.empty()) {
                     fz_empty_store(context);
-                    cache[out.page] = raster(document, out.page, r.style.portrait ? 328 : 576,
-                                             r.style.portrait ? 584 : 302, false);
+                    cache[out.page] = raster(document, out.page, r.style.portrait ? 360 : 640,
+                                             r.style.portrait ? 640 : 360, false);
                 }
                 out.image = cache[out.page];
                 if (out.image.pixels.empty())
@@ -295,8 +295,8 @@ void entry(void *) {
                 if (waiting || stopping)
                     break;
                 if (next >= 0 && next < total && !cache.count(next)) {
-                    auto image = raster(document, next, r.style.portrait ? 656 : 1152,
-                                        r.style.portrait ? 1168 : 604, fixedLayout(r.path));
+                    auto image = raster(document, next, r.style.portrait ? 720 : 1280,
+                                        r.style.portrait ? 1280 : 720, fixedLayout(r.path));
                     if (!image.pixels.empty())
                         cache[next] = std::move(image);
                     trimCache(current);

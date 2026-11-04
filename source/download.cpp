@@ -104,11 +104,11 @@ void editDownload() {
         notify("Enter a direct HTTP or HTTPS download link");
         return;
     }
-    auto name = keyboard("Save book as (EPUB, PDF, CBZ or CBR)", downloadName(url), 160, true);
+    auto name = keyboard("Save book as (include the file extension)", downloadName(url), 160, true);
     if (name.empty())
         return;
     if (!validDownloadName(name)) {
-        notify("Use a filename ending in .epub, .pdf, .cbz or .cbr");
+        notify("Use an EPUB, PDF, CBZ, CBR, FB2, HTML or XPS filename");
         return;
     }
     auto path = "sdmc:/lib/" + name;

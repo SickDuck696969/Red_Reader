@@ -96,10 +96,11 @@ void loadState() {
         j = nlohmann::json::parse(backup, nullptr, false);
     }
     if (j.is_object()) {
-        app.style.font = integer(j, "font", 0, 0, 3);
+        app.style.font = integer(j, "font", 0, 0, fontCount - 1);
         app.style.size = integer(j, "size", 22, 12, 42);
+        app.style.alignment = integer(j, "alignment", 0, 0, alignmentCount - 1);
         app.style.spacing = integer(j, "spacing", 14, 10, 22);
-        app.style.margin = integer(j, "margin", 32, 8, 88);
+        app.style.margin = integer(j, "margin", 16, 0, 88);
         app.style.theme = integer(j, "theme", 0, 0, 2);
         app.sort = integer(j, "sort", 0, 0, 2);
         if (j.contains("portrait") && j["portrait"].is_boolean())
@@ -147,11 +148,17 @@ void saveState() {
         savedBooks[b.path] = {{"page", b.page},     {"total", b.total},       {"fraction", b.fraction},
                               {"opened", b.opened}, {"favorite", b.favorite}, {"marks", marks}};
     }
-    nlohmann::json j = {{"font", app.style.font},       {"size", app.style.size},
-                        {"spacing", app.style.spacing}, {"margin", app.style.margin},
-                        {"theme", app.style.theme},     {"portrait", app.style.portrait},
-                        {"motion", app.style.motion},   {"sort", app.sort},
-                        {"last", app.lastRead},         {"books", savedBooks}};
+    nlohmann::json j = {{"alignment", app.style.alignment},
+                        {"font", app.style.font},
+                        {"size", app.style.size},
+                        {"spacing", app.style.spacing},
+                        {"margin", app.style.margin},
+                        {"theme", app.style.theme},
+                        {"portrait", app.style.portrait},
+                        {"motion", app.style.motion},
+                        {"sort", app.sort},
+                        {"last", app.lastRead},
+                        {"books", savedBooks}};
     std::ofstream out(statePath + ".tmp");
     out << j.dump(2);
     out.close();

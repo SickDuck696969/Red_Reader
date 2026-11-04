@@ -11,6 +11,11 @@
 int main(int argc, char **argv) {
     using namespace rr;
     std::string validationError;
+    CHECK(validBookFile("build/asset-fixtures/sample.fb2", "fb2", validationError));
+    CHECK(validBookFile("build/asset-fixtures/sample.html", "html", validationError));
+    CHECK(validBookFile("build/asset-fixtures/sample.xps", "xps", validationError));
+    CHECK(!validBookFile("build/asset-fixtures/sample.html", "fb2", validationError));
+    validationError.clear();
     CHECK(validBookFile("build/asset-fixtures/epub2.epub", "epub", validationError));
     CHECK(validBookFile("build/asset-fixtures/comic.cbz", "cbz", validationError));
     CHECK(validBookFile("build/asset-fixtures/comic5.cbr", "cbr", validationError));

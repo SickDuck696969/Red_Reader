@@ -26,7 +26,7 @@ struct Label {
 };
 std::map<std::string, Label> labels;
 uint64_t serial = 0;
-TTF_Font *preview[4]{};
+TTF_Font *preview[fontCount]{};
 void box(int x, int y, int w, int h, SDL_Color c) {
     SDL_SetRenderDrawColor(app.renderer, c.r, c.g, c.b, c.a);
     SDL_Rect r{x, y, w, h};
@@ -108,12 +108,12 @@ void library() {
          p.accent, app.small);
     text(std::to_string(app.visible.size()) + " books", 1060, 34, 180, p.muted, app.small);
     line(40, 80, 1200, p.line);
-    text(app.query.empty() ? (app.favorites ? "Favorites" : "Library") : "Search: " + app.query, 40, 96, 770,
+    text(app.query.empty() ? (app.favorites ? "Favorites" : "Library") : "Search: " + app.query, 40, 110, 500,
          p.text, app.small);
     text(app.sort == 0   ? "Title A-Z"
          : app.sort == 1 ? "Title Z-A"
                          : "Recently read",
-         1000, 96, 240, p.muted, app.small);
+         580, 110, 240, p.muted, app.small);
     app.cursor = std::clamp(app.cursor, 0, std::max(0, (int)app.visible.size() - 1));
     int first = libraryFirst(app.cursor);
     app.offset = first;
@@ -159,23 +159,29 @@ void library() {
         SDL_SetRenderDrawColor(app.renderer, 255, 255, 255, (Uint8)(65 + 45 * emphasis));
         SDL_Rect inner{selectedX + 3, selectedY + 3, libraryCardW - 6, libraryCardH - 6};
         SDL_RenderDrawRect(app.renderer, &inner);
-        line(40, 541, 1200, p.line);
         const auto &b = app.books[app.visible[app.cursor]];
-        bookTitle(b.title, 40, 557, 940);
+        // The selected cover has its own stable frame, independent of the shelf cards.
+        box(856, 110, 384, 530, p.panel);
+        line(856, 110, 384, p.accent);
+        cover(b, 913, 136, 270, 360);
+        bookTitle(b.title, 880, 516, 336);
         std::string info =
             b.total ? "Page " + std::to_string(b.page + 1) + " of " + std::to_string(b.total) : "Unread";
-        text(info + "   /   " + std::to_string(b.marks.size()) + " bookmarks" +
-                 (b.favorite ? "   /   Favorite" : ""),
-             40, 619, 1000, p.muted, app.small);
-        text(std::to_string(first / libraryCapacity + 1) + " / " +
+        text(format(b.path) + "  /  " + info, 880, 584, 336, p.muted, app.small);
+        text(std::to_string(b.marks.size()) + " bookmarks" + (b.favorite ? "  /  Favorite" : ""), 880, 612,
+             336, p.muted, app.small);
+        line(40, 580, 772, p.line);
+        text("Page " + std::to_string(first / libraryCapacity + 1) + " / " +
                  std::to_string(((int)app.visible.size() + libraryCapacity - 1) / libraryCapacity),
-             1100, 563, 140, p.text, app.body);
-        text("Library page", 1090, 600, 150, p.muted, app.small);
+             40, 602, 300, p.muted, app.small);
+        text(std::to_string(first + 1) + " - " +
+                 std::to_string(std::min(first + libraryCapacity, (int)app.visible.size())) + " of " +
+                 std::to_string(app.visible.size()),
+             580, 602, 232, p.muted, app.small);
     } else {
         text("No books found", 40, 244, 1100, p.text, app.heading);
-        text(app.query.empty() ? "Add EPUB, PDF, CBZ or CBR files to sdmc:/lib"
-                               : "Y: edit search   B: clear filters",
-             40, 302, 1100, p.muted);
+        text(app.query.empty() ? "Add books to sdmc:/lib" : "Y: edit search   B: clear filters", 40, 302,
+             1100, p.muted);
     }
     footer("A Open    X Resume    Y Search    L Favorites    R Sort    + Settings",
            "D-pad Select    - Favorite    ZL / ZR Library page    Touch: select, then open");
@@ -190,7 +196,8 @@ void downloads() {
     text("Download book", 80, 50, 1100, p.text, app.heading);
     line(80, 108, 1120, p.line);
     bool running = download.state == DownloadState::Running;
-    text(download.name.empty() ? "EPUB / PDF / CBZ / CBR" : download.name, 80, 148, 1120, p.text);
+    text(download.name.empty() ? "EPUB / PDF / Comics / FB2 / HTML / XPS" : download.name, 80, 148, 1120,
+         p.text);
     text("Save location: sdmc:/lib", 80, 195, 1120, p.muted, app.small);
     std::string status = running ? (download.bytes ? "Downloading" : "Connecting...")
                          : download.state == DownloadState::Complete  ? "Download complete"
@@ -239,15 +246,15 @@ void drawPage(SDL_Texture *texture, float alpha, float slide, int width, int hei
         return;
     int tw, th;
     SDL_QueryTexture(texture, nullptr, nullptr, &tw, &th);
-    float fit = std::min((width - 64.f) / tw, (height - 116.f) / th);
+    float fit = std::min((float)width / tw, (float)height / th);
     int w = tw * fit * app.zoom, h = th * fit * app.zoom;
-    float maxX = std::max(0.f, (w - (width - 64.f)) / 2), maxY = std::max(0.f, (h - (height - 116.f)) / 2);
+    float maxX = std::max(0.f, (w - width) / 2.f), maxY = std::max(0.f, (h - height) / 2.f);
     app.panX = std::clamp(app.panX, -maxX, maxX);
     app.panY = std::clamp(app.panY, -maxY, maxY);
     SDL_Rect dest{(int)((width - w) / 2 + app.panX + slide), (int)((height - h) / 2 + app.panY), w, h};
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_SetTextureAlphaMod(texture, (Uint8)(alpha * 255));
-    SDL_Rect clip{24, 48, width - 48, height - 96};
+    SDL_Rect clip{0, 0, width, height};
     SDL_RenderSetClipRect(app.renderer, &clip);
     SDL_RenderCopy(app.renderer, texture, nullptr, &dest);
     SDL_RenderSetClipRect(app.renderer, nullptr);
@@ -268,6 +275,10 @@ void reader() {
         app.oldPage = nullptr;
     }
     if (app.hud && app.active >= 0) {
+        auto overlay = p.panel;
+        overlay.a = 235;
+        box(0, 0, width, 44, overlay);
+        box(0, height - 48, width, 48, overlay);
         text(app.books[app.active].title, 32, 14, width - 300, p.muted, app.small);
         text(app.busy ? "Rendering..." : std::to_string(app.page + 1) + " / " + std::to_string(app.total),
              width - 240, 14, 208, p.muted, app.small);
@@ -294,13 +305,15 @@ void settings() {
     auto p = palette();
     text("Reading settings", 40, 28, 1100, p.text, app.heading);
     line(40, 91, 1200, p.line);
-    const std::string names[] = {"Font",       "Text size",   "Line spacing", "Margins",
-                                 "Appearance", "Orientation", "Animation",    "Go to page",
-                                 "Chapters",   "Bookmarks",   "Library",      "Exit reader"};
+    const std::string names[] = {
+        "Font",       "Text size",   "Line spacing", "Margins",    "Paragraph alignment",
+        "Appearance", "Orientation", "Animation",    "Go to page", "Chapters",
+        "Bookmarks",  "Library",     "Exit reader"};
     const std::string values[] = {fontNames[app.style.font],
                                   std::to_string(app.style.size),
                                   std::to_string(app.style.spacing / 10.f).substr(0, 3),
                                   std::to_string(app.style.margin),
+                                  alignmentNames[app.style.alignment],
                                   themeNames[app.style.theme],
                                   app.style.portrait ? "Portrait" : "Landscape",
                                   app.style.motion ? "On" : "Reduced motion",
@@ -309,8 +322,8 @@ void settings() {
                                   "",
                                   "",
                                   ""};
-    int first = start(12, 8);
-    for (int i = first; i < std::min(first + 8, 12); ++i) {
+    int first = start(settingsCount, 8);
+    for (int i = first; i < std::min(first + 8, settingsCount); ++i) {
         int y = 119 + (i - first) * 65;
         box(40, y, 780, 59, i == app.cursor ? p.panel : p.background);
         if (i == app.cursor)
@@ -318,20 +331,19 @@ void settings() {
         text(names[i], 60, y + 17, 310, p.text);
         text(values[i], 386, y + 17, 410, p.muted);
     }
-    scrollbar(832, 119, 514, 12, 8);
+    scrollbar(832, 119, 514, settingsCount, 8);
     box(872, 119, 368, 514, p.panel);
     text("Font preview", 900, 148, 312, p.muted, app.small);
     if (!preview[app.style.font]) {
-        const char *paths[] = {"fonts/CrimsonText-Regular.ttf", "fonts/Atkinson-Regular.ttf",
-                               "fonts/CrimsonText-Regular.ttf", "fonts/Lusitana-Regular.ttf"};
-        preview[app.style.font] =
-            TTF_OpenFont((std::string(romfsPrefix) + paths[app.style.font]).c_str(), 32);
+        auto path = std::string(romfsPrefix) + "fonts/" + fontFamilies[app.style.font] + "-Regular.ttf";
+        preview[app.style.font] = TTF_OpenFont(path.c_str(), 32);
     }
     text("Aa Bb Cc Dd", 900, 201, 310, p.text, preview[app.style.font]);
     text("0123456789", 900, 250, 310, p.text, preview[app.style.font]);
-    text("EPUB", 900, 342, 310, p.text);
-    text("Font, size, spacing, margins", 900, 379, 310, p.muted, app.small);
-    text("PDF / CBZ / CBR", 900, 438, 310, p.text);
+    text(fontSuggestions[app.style.font], 900, 298, 310, p.muted, app.small);
+    text("EPUB / FB2 / HTML", 900, 342, 310, p.text);
+    text("Font, margins and alignment", 900, 379, 310, p.muted, app.small);
+    text("PDF / Comics / XPS", 900, 438, 310, p.text);
     text("Original layout; zoom and pan", 900, 475, 310, p.muted, app.small);
     text("B applies reading changes", 900, 569, 310, p.muted, app.small);
     footer("Up / Down Select    Left / Right Adjust    A Change / open    B Apply and close");

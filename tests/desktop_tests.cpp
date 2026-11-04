@@ -77,7 +77,7 @@ using namespace rr;
 Image pageImage() {
     SDL_Surface *source = IMG_Load("build/epub-2.png");
     if (!source) {
-        source = SDL_CreateRGBSurfaceWithFormat(0, 800, 604, 24, SDL_PIXELFORMAT_RGB24);
+        source = SDL_CreateRGBSurfaceWithFormat(0, 1280, 720, 24, SDL_PIXELFORMAT_RGB24);
         SDL_FillRect(source, nullptr, SDL_MapRGB(source->format, 255, 255, 255));
         auto *f = TTF_OpenFont("romfs/fonts/CrimsonText-Regular.ttf", 24);
         const char *lines[] = {"Chapter One",
@@ -192,7 +192,7 @@ int main() {
     app.books.push_back(extra);
     rebuild();
     input(HidNpadButton_ZR, 0);
-    CHECK(app.cursor == 16 && libraryFirst(app.cursor) == 16);
+    CHECK(app.cursor == libraryCapacity && libraryFirst(app.cursor) == libraryCapacity);
     render();
     input(HidNpadButton_ZL, 0);
     CHECK(app.cursor == 0);
@@ -239,6 +239,13 @@ int main() {
     CHECK(app.busy && app.screen == Screen::Reading);
     complete();
     CHECK(!app.busy && app.page == 9 && app.total == 30);
+    CHECK(!app.hud);
+    render();
+    unsigned char edge[4]{};
+    SDL_Rect pixel{1, 1, 1, 1};
+    CHECK(SDL_RenderReadPixels(app.renderer, &pixel, SDL_PIXELFORMAT_RGBA32, edge, 4) == 0);
+    CHECK(edge[0] == 255 && edge[1] == 255 && edge[2] == 255);
+
     input(HidNpadButton_Y, 0);
     CHECK(app.books[0].marks.size() == 1);
     input(HidNpadButton_Y, 0);
@@ -258,7 +265,11 @@ int main() {
     CHECK(app.style.font == 2);
     render();
     CHECK(IMG_SavePNG(surface, "build/settings.png") == 0);
-    app.cursor = 8;
+    app.cursor = 4;
+    input(HidNpadButton_Right, 0);
+    input(HidNpadButton_Right, 0);
+    CHECK(app.style.alignment == 2);
+    app.cursor = 9;
     input(HidNpadButton_A, 0);
     CHECK(app.busy && app.pendingNavigation == 2);
     complete(60);
@@ -271,7 +282,7 @@ int main() {
     complete(60);
     CHECK(app.page == 15);
     input(HidNpadButton_Plus, 0);
-    app.cursor = 9;
+    app.cursor = 10;
     input(HidNpadButton_A, 0);
     CHECK(app.screen == Screen::Bookmarks);
     input(HidNpadButton_A, 0);
@@ -285,12 +296,12 @@ int main() {
     pollEngine();
     CHECK(app.page == current);
     input(HidNpadButton_Plus, 0);
-    app.cursor = 7;
+    app.cursor = 8;
     keyboardAnswer = "99999";
     input(HidNpadButton_A, 0);
     CHECK(!app.busy);
     input(HidNpadButton_Plus, 0);
-    app.cursor = 7;
+    app.cursor = 8;
     keyboardAnswer = "2";
     input(HidNpadButton_A, 0);
     complete(60);
@@ -335,11 +346,29 @@ int main() {
     fingerEvent(SDL_FINGERDOWN, 2, .6f, .5f);
     fingerEvent(SDL_FINGERMOTION, 2, .7f, .5f);
     CHECK(app.zoom > 1.8f);
+    CHECK(app.panX > 60.f); // centroid moved right; zoom must follow it rather than stay centered
+
     fingerEvent(SDL_FINGERUP, 2, .7f, .5f);
     fingerEvent(SDL_FINGERUP, 1, .4f, .5f);
     CHECK(!app.busy);
-    for (int fontIndex = 0; fontIndex < 4; ++fontIndex) {
+    app.style.portrait = true;
+    app.zoom = 1;
+    app.panX = app.panY = 0;
+    fingerEvent(SDL_FINGERDOWN, 1, .25f, .4f);
+    fingerEvent(SDL_FINGERDOWN, 2, .25f, .6f);
+    fingerEvent(SDL_FINGERMOTION, 2, .25f, .8f);
+    CHECK(app.zoom > 1.9f && app.panX > 60.f &&
+          app.panY == 0); // landscape page fits portrait height: clamp vertical pan
+
+    fingerEvent(SDL_FINGERUP, 1, .25f, .4f);
+    fingerEvent(SDL_FINGERUP, 2, .25f, .8f);
+    app.style.portrait = false;
+    for (int fontIndex = 0; fontIndex < fontCount; ++fontIndex) {
         app.style.font = fontIndex;
+        auto fontPath = std::string("romfs/fonts/") + fontFamilies[fontIndex] + "-Regular.ttf";
+        auto *font = TTF_OpenFont(fontPath.c_str(), 24);
+        CHECK(font);
+        TTF_CloseFont(font);
         app.screen = Screen::Settings;
         render();
     }

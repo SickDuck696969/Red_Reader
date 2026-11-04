@@ -3,14 +3,19 @@
 #include <string>
 #include <vector>
 namespace rr {
-constexpr int libraryColumns = 8, libraryRows = 2, libraryCapacity = libraryColumns * libraryRows;
-constexpr int libraryX = 40, libraryY = 132, libraryCardW = 132, libraryCardH = 176;
-constexpr int libraryPitchX = 152, libraryPitchY = 210;
+constexpr int libraryColumns = 5, libraryRows = 2, libraryCapacity = libraryColumns * libraryRows;
+constexpr int libraryX = 40, libraryY = 156, libraryCardW = 132, libraryCardH = 176;
+constexpr int libraryPitchX = 156, libraryPitchY = 222;
 inline int libraryFirst(int cursor) {
     return cursor < 0 ? 0 : cursor / libraryCapacity * libraryCapacity;
 }
+struct Point {
+    float x = 0, y = 0;
+};
+Point anchoredPan(Point startMid, Point currentMid, Point startPan, float startZoom, float zoom,
+                  float viewportWidth, float viewportHeight);
 struct Style {
-    int font = 0, size = 22, spacing = 14, margin = 32, theme = 0;
+    int font = 0, size = 22, spacing = 14, margin = 16, theme = 0, alignment = 0;
     bool portrait = false, motion = true;
 };
 struct Mark {
@@ -41,6 +46,17 @@ std::string styleKey(const Style &style);
 std::string readingCss(const Style &style, const std::string &fontRoot = "romfs:/fonts/");
 int resolvePage(int savedPage, int savedTotal, double fraction, int total);
 std::vector<int> filtered(const std::vector<Book> &books, const std::string &query, bool favorites, int sort);
-constexpr const char *fontNames[] = {"Publisher", "Atkinson Hyperlegible", "Crimson Text", "Lusitana"};
+constexpr const char *fontNames[] = {
+    "Publisher", "Atkinson Hyperlegible", "Crimson Text", "Lusitana", "Spectral",
+    "Cardo",     "Gentium Book Plus"};
+constexpr const char *fontFamilies[] = {"CrimsonText", "Atkinson", "CrimsonText",    "Lusitana",
+                                        "Spectral",    "Cardo",    "GentiumBookPlus"};
+constexpr const char *fontSuggestions[] = {"Book's original typography",  "Clear sans-serif",
+                                           "Classics / literary fiction", "Romance / literary fiction",
+                                           "Contemporary / mystery",      "Fantasy / historical fiction",
+                                           "Long novels / classics"};
+constexpr int fontCount = sizeof(fontNames) / sizeof(fontNames[0]);
+constexpr const char *alignmentNames[] = {"Publisher", "Left", "Center", "Right", "Justify"};
+constexpr int alignmentCount = 5, settingsCount = 13;
 constexpr const char *themeNames[] = {"Paper", "Sepia", "Night"};
 } // namespace rr

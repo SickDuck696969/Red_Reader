@@ -28,3 +28,12 @@ if rar.exists():
   subprocess.run([str(rar),'a','-idq','-ep','-ma'+ver,str((root/('comic'+ver+'.cbr')).resolve()),str(files/'*.png')],check=True)
 print('Archive fixtures generated')
 
+
+(root/'sample.fb2').write_text('<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><description><title-info><book-title>Test book</book-title></title-info></description><body><section><title><p>Chapter</p></title><p>Original test text.</p></section></body></FictionBook>',encoding='utf-8')
+(root/'sample.html').write_text('<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Chapter</h1><p>Original test text.</p></body></html>',encoding='utf-8')
+with zipfile.ZipFile(root/'sample.xps','w') as z:
+ z.writestr('[Content_Types].xml','<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/FixedDocSeq.fdseq" ContentType="application/vnd.ms-package.xps-fixeddocumentsequence+xml"/></Types>')
+ z.writestr('_rels/.rels','<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="r1" Type="http://schemas.microsoft.com/xps/2005/06/fixedrepresentation" Target="/FixedDocSeq.fdseq"/></Relationships>')
+ z.writestr('FixedDocSeq.fdseq','<FixedDocumentSequence xmlns="http://schemas.microsoft.com/xps/2005/06"><DocumentReference Source="FixedDoc.fdoc"/></FixedDocumentSequence>')
+ z.writestr('FixedDoc.fdoc','<FixedDocument xmlns="http://schemas.microsoft.com/xps/2005/06"><PageContent Source="Page.fpage"/></FixedDocument>')
+ z.writestr('Page.fpage','<FixedPage xmlns="http://schemas.microsoft.com/xps/2005/06" Width="600" Height="800" xml:lang="en-US"><Path Fill="#FF884422" Data="M 50,50 L 550,50 550,750 50,750 Z"/></FixedPage>')

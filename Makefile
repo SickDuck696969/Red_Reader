@@ -40,7 +40,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 TARGET		:= Red_Reader
 APP_TITLE	:= Red Reader
 APP_AUTHOR	:= SickDuck
-APP_VERSION	:= 2.3.0
+APP_VERSION	:= 2.5.0
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
